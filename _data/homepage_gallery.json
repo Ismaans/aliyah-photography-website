@@ -1,0 +1,29 @@
+{
+  "items": [
+    {
+      "src": "/images/gallery-1.jpg",
+      "title": "Portrait Series",
+      "description": "Click to view project",
+      "project": "project1"
+    },
+    {
+      "src": "/images/gallery-2.jpg",
+      "title": "Fashion Editorial",
+      "description": "Click to view project",
+      "project": "project2"
+    },
+    {
+      "src": "/images/gallery-3.jpg",
+      "title": "Beauty Portraits",
+      "description": "Click to view project",
+      "project": "project3"
+    },
+    {
+      "src": "/images/gallery-4.jpg",
+      "title": "Cultural Heritage",
+      "description": "Click to view project",
+      "project": "project4"
+    }
+  ]
+}
+

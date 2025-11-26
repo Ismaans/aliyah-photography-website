@@ -1,0 +1,355 @@
+// Mobile Menu Toggle
+const menuToggle = document.querySelector('.menu-toggle');
+const navMenu = document.querySelector('.nav-menu');
+
+if (menuToggle && navMenu) {
+    menuToggle.addEventListener('click', () => {
+        navMenu.classList.toggle('active');
+    });
+
+    // Close menu when clicking on a link
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            navMenu.classList.remove('active');
+        });
+    });
+}
+
+// Load gallery data from JSON
+let galleryData = [];
+let projectData = {};
+
+// Fetch homepage gallery data
+async function loadGalleryData() {
+    try {
+        const response = await fetch('_data/homepage_gallery.json');
+        const data = await response.json();
+        galleryData = data.items.map(item => ({
+            src: item.src.replace('/images/', 'images/'),
+            title: item.title,
+            description: item.description || '',
+            project: item.project
+        }));
+        initHomepageGallery();
+    } catch (error) {
+        console.error('Error loading gallery data:', error);
+        // Fallback to default data
+        galleryData = [
+            { src: 'images/gallery-1.jpg', title: 'Portrait Series', project: 'project1' },
+            { src: 'images/gallery-2.jpg', title: 'Fashion Editorial', project: 'project2' },
+            { src: 'images/gallery-3.jpg', title: 'Beauty Portraits', project: 'project3' },
+            { src: 'images/gallery-4.jpg', title: 'Cultural Heritage', project: 'project4' }
+        ];
+        initHomepageGallery();
+    }
+}
+
+// Fetch projects data
+async function loadProjectsData() {
+    try {
+        const response = await fetch('_data/projects.json');
+        const data = await response.json();
+        projectData = {};
+        data.projects.forEach(project => {
+            projectData[project.id] = {
+                images: project.images.map(img => img.image.replace('/images/', 'images/')),
+                title: project.title,
+                description: project.description
+            };
+        });
+        renderWorkGallery(data.projects);
+        initWorkPage();
+    } catch (error) {
+        console.error('Error loading projects data:', error);
+        // Fallback to default data
+        const fallbackProjects = [
+            { id: 'project1', title: 'Portrait Series', thumbnail: 'images/work-1.jpg' },
+            { id: 'project2', title: 'Fashion Editorial', thumbnail: 'images/work-2.jpg' },
+            { id: 'project3', title: 'Beauty Portraits', thumbnail: 'images/work-3.jpg' },
+            { id: 'project4', title: 'Cultural Heritage', thumbnail: 'images/work-4.jpg' },
+            { id: 'project5', title: 'Portrait Collection', thumbnail: 'images/work-5.jpg' },
+            { id: 'project6', title: 'Fashion Series', thumbnail: 'images/work-6.jpg' }
+        ];
+        projectData = {
+            project1: { images: ['images/work-1.jpg'], title: 'Portrait Series', description: 'A collection of intimate portraits.' },
+            project2: { images: ['images/work-2.jpg'], title: 'Fashion Editorial', description: 'Contemporary fashion photography.' },
+            project3: { images: ['images/work-3.jpg'], title: 'Beauty Portraits', description: 'Focus on natural beauty.' },
+            project4: { images: ['images/work-4.jpg'], title: 'Cultural Heritage', description: 'Celebrating South Asian traditions.' },
+            project5: { images: ['images/work-5.jpg'], title: 'Portrait Collection', description: 'A diverse collection of portraits.' },
+            project6: { images: ['images/work-6.jpg'], title: 'Fashion Series', description: 'Exploring fashion and culture.' }
+        };
+        renderWorkGallery(fallbackProjects);
+        initWorkPage();
+    }
+}
+
+// Render work gallery from projects data
+function renderWorkGallery(projects) {
+    const workGallery = document.getElementById('workGallery');
+    if (!workGallery) return;
+    
+    workGallery.innerHTML = projects.map(project => {
+        const thumbnail = project.thumbnail.replace('/images/', 'images/');
+        return `
+            <div class="work-item" data-project="${project.id}">
+                <img src="${thumbnail}" alt="${project.title}">
+                <div class="work-overlay">
+                    <h3>${project.title}</h3>
+                    <p>View Project</p>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Initialize data loading
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.querySelector('.homepage')) {
+        loadGalleryData();
+    }
+    if (document.querySelector('.work-page') || document.querySelector('.project-modal')) {
+        loadProjectsData();
+    }
+});
+
+// Homepage Gallery Navigation
+function initHomepageGallery() {
+    const galleryContainer = document.querySelector('.gallery-indicators');
+    if (galleryContainer && galleryData.length > 0) {
+        // Generate indicators dynamically
+        galleryContainer.innerHTML = galleryData.map((_, index) => 
+            `<span class="indicator ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`
+        ).join('');
+    }
+    
+    const galleryImages = document.querySelectorAll('.gallery-image');
+    const galleryArrows = document.querySelectorAll('.gallery-arrow');
+    const indicators = document.querySelectorAll('.indicator');
+    let currentImageIndex = 0;
+
+    if (galleryImages.length > 0 && galleryData.length > 0) {
+
+    function showImage(index) {
+        galleryImages.forEach((img, i) => {
+            img.classList.remove('active');
+            if (i === index) {
+                img.classList.add('active');
+                img.src = galleryData[index].src;
+                img.setAttribute('data-project', galleryData[index].project);
+                
+                // Update overlay
+                const overlay = img.parentElement.querySelector('.image-overlay');
+                if (overlay) {
+                    overlay.querySelector('.image-title').textContent = galleryData[index].title;
+                }
+            }
+        });
+
+        indicators.forEach((indicator, i) => {
+            indicator.classList.toggle('active', i === index);
+        });
+
+        currentImageIndex = index;
+    }
+
+    // Arrow navigation
+    galleryArrows.forEach(arrow => {
+        arrow.addEventListener('click', () => {
+            if (arrow.classList.contains('gallery-arrow-left')) {
+                currentImageIndex = (currentImageIndex - 1 + galleryData.length) % galleryData.length;
+            } else {
+                currentImageIndex = (currentImageIndex + 1) % galleryData.length;
+            }
+            showImage(currentImageIndex);
+        });
+    });
+
+    // Indicator navigation
+    indicators.forEach((indicator, index) => {
+        indicator.addEventListener('click', () => {
+            showImage(index);
+        });
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (galleryImages.length > 0 && galleryImages[0].classList.contains('active')) {
+            if (e.key === 'ArrowLeft') {
+                currentImageIndex = (currentImageIndex - 1 + galleryData.length) % galleryData.length;
+                showImage(currentImageIndex);
+            } else if (e.key === 'ArrowRight') {
+                currentImageIndex = (currentImageIndex + 1) % galleryData.length;
+                showImage(currentImageIndex);
+            }
+        }
+    });
+
+    // Click on gallery image to go to project
+    galleryImages.forEach(img => {
+        img.addEventListener('click', () => {
+            const project = img.getAttribute('data-project');
+            if (project) {
+                window.location.href = `work.html#${project}`;
+            }
+        });
+    });
+
+        // Initialize first image
+        showImage(0);
+    }
+}
+
+// Work Page - Project Modal
+function initWorkPage() {
+    const workItems = document.querySelectorAll('.work-item');
+    const projectModal = document.getElementById('projectModal');
+    const modalImage = document.getElementById('modalImage');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalDescription = document.getElementById('modalDescription');
+    const modalClose = document.querySelector('.modal-close');
+    const modalArrows = document.querySelectorAll('.modal-arrow');
+
+    let currentProject = null;
+    let currentProjectImageIndex = 0;
+
+    if (workItems.length > 0) {
+        workItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const projectId = item.getAttribute('data-project');
+                openProjectModal(projectId);
+            });
+        });
+    }
+
+    function openProjectModal(projectId) {
+        if (!projectData[projectId]) return;
+        
+        currentProject = projectId;
+        currentProjectImageIndex = 0;
+        const project = projectData[projectId];
+        
+        if (modalImage) modalImage.src = project.images[0];
+        if (modalTitle) modalTitle.textContent = project.title;
+        if (modalDescription) modalDescription.textContent = project.description;
+        
+        if (projectModal) {
+            projectModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeProjectModal() {
+        if (projectModal) {
+            projectModal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        currentProject = null;
+    }
+
+    function navigateProjectImage(direction) {
+        if (!currentProject) return;
+        
+        const project = projectData[currentProject];
+        const totalImages = project.images.length;
+        
+        if (direction === 'next') {
+            currentProjectImageIndex = (currentProjectImageIndex + 1) % totalImages;
+        } else {
+            currentProjectImageIndex = (currentProjectImageIndex - 1 + totalImages) % totalImages;
+        }
+        
+        if (modalImage) modalImage.src = project.images[currentProjectImageIndex];
+    }
+
+    if (modalClose) {
+        modalClose.addEventListener('click', closeProjectModal);
+    }
+
+    if (modalArrows.length > 0) {
+        modalArrows.forEach(arrow => {
+            arrow.addEventListener('click', () => {
+                if (arrow.classList.contains('modal-arrow-right')) {
+                    navigateProjectImage('next');
+                } else {
+                    navigateProjectImage('prev');
+                }
+            });
+        });
+    }
+
+    // Close modal on outside click
+    if (projectModal) {
+        projectModal.addEventListener('click', (e) => {
+            if (e.target === projectModal) {
+                closeProjectModal();
+            }
+        });
+    }
+
+    // Keyboard navigation for modal
+    document.addEventListener('keydown', (e) => {
+        if (projectModal && projectModal.classList.contains('active')) {
+            if (e.key === 'Escape') {
+                closeProjectModal();
+            } else if (e.key === 'ArrowLeft') {
+                navigateProjectImage('prev');
+            } else if (e.key === 'ArrowRight') {
+                navigateProjectImage('next');
+            }
+        }
+    });
+
+    // Store functions globally for hash navigation
+    window.openProjectModal = openProjectModal;
+    
+    // Handle hash navigation to open project from homepage
+    if (window.location.hash) {
+        const hash = window.location.hash.substring(1);
+        if (hash && projectData[hash]) {
+            setTimeout(() => openProjectModal(hash), 100);
+        }
+    }
+}
+
+
+// Smooth scrolling
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    });
+});
+
+// Contact Form Handling
+const contactForm = document.getElementById('contactForm');
+if (contactForm) {
+    // Set reply-to field to the user's email
+    const emailInput = document.getElementById('email');
+    const replyToField = document.getElementById('replyto');
+    
+    if (emailInput && replyToField) {
+        emailInput.addEventListener('input', function() {
+            replyToField.value = emailInput.value;
+        });
+    }
+    
+    contactForm.addEventListener('submit', function(e) {
+        const submitButton = contactForm.querySelector('.submit-button');
+        const originalButtonText = submitButton.textContent;
+        
+        // Disable button and show loading state
+        submitButton.disabled = true;
+        submitButton.textContent = 'Sending...';
+        
+        // Form will submit to Formspree, which will handle the email
+        // The form will redirect to a success page or show a message
+    });
+}
+

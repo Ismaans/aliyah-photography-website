@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aliyah Tasnim - Photography</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <a href="index.html">aliyah tasnim</a>
+                <span class="arabic-name">عالیہ تسنیم</span>
+            </div>
+            <button class="menu-toggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link active">Home</a></li>
+                <li><a href="work.html" class="nav-link">Work</a></li>
+                <li><a href="about.html" class="nav-link">About</a></li>
+                <li><a href="contact.html" class="nav-link">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Homepage Gallery -->
+    <main class="homepage">
+        <div class="gallery-container">
+            <button class="gallery-arrow gallery-arrow-left" aria-label="Previous image">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </button>
+            
+            <div class="gallery-main">
+                <div class="gallery-image-wrapper">
+                    <img src="images/gallery-1.jpg" alt="Photography by Aliyah Tasnim" class="gallery-image active" data-project="project1">
+                    <div class="image-overlay">
+                        <h3 class="image-title">Portrait Series</h3>
+                        <p class="image-description">Click to view project</p>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="gallery-arrow gallery-arrow-right" aria-label="Next image">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="gallery-indicators">
+            <span class="indicator active" data-index="0"></span>
+            <span class="indicator" data-index="1"></span>
+            <span class="indicator" data-index="2"></span>
+            <span class="indicator" data-index="3"></span>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
