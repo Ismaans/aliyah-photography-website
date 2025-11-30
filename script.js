@@ -19,19 +19,20 @@ if (menuToggle && navMenu) {
 // Load gallery data from JSON
 let galleryData = [];
 let projectData = {};
+let allHomepagePhotos = []; // All photos from all projects for cycling
+let projectsList = []; // List of projects for indicators
 
 // Fetch homepage gallery data
 async function loadGalleryData() {
     try {
-        const response = await fetch('_data/homepage_gallery.json');
+        const response = await fetch('/_data/homepage_gallery.json');
         const data = await response.json();
         galleryData = data.items.map(item => ({
-            src: item.src.replace('/images/', 'images/'),
+            src: item.src.startsWith('http') ? item.src : (item.src.startsWith('/') ? item.src : '/' + item.src),
             title: item.title,
             description: item.description || '',
             project: item.project
         }));
-        initHomepageGallery();
     } catch (error) {
         console.error('Error loading gallery data:', error);
         // Fallback to default data
@@ -41,36 +42,54 @@ async function loadGalleryData() {
             { src: 'images/gallery-3.jpg', title: 'Beauty Portraits', project: 'project3' },
             { src: 'images/gallery-4.jpg', title: 'Cultural Heritage', project: 'project4' }
         ];
-        initHomepageGallery();
     }
 }
 
 // Fetch projects data
 async function loadProjectsData() {
     try {
-        const response = await fetch('_data/projects.json');
+        const response = await fetch('/_data/projects.json');
         const data = await response.json();
         projectData = {};
+        projectsList = data.projects;
+        
         data.projects.forEach(project => {
             projectData[project.id] = {
-                images: project.images.map(img => img.image.replace('/images/', 'images/')),
+                images: project.images.map(img => {
+                    const imgPath = img.image.startsWith('http') ? img.image : (img.image.startsWith('/') ? img.image : '/' + img.image);
+                    return imgPath;
+                }),
                 title: project.title,
                 description: project.description
             };
+            
+            // Add all photos from this project to homepage gallery
+            project.images.forEach(img => {
+                const imgPath = img.image.startsWith('/') ? img.image : '/' + img.image;
+                allHomepagePhotos.push({
+                    src: imgPath,
+                    title: project.title,
+                    project: project.id
+                });
+            });
         });
-        renderWorkGallery(data.projects);
-        initWorkPage();
+        
+        if (document.querySelector('.work-page')) {
+            renderWorkGallery(data.projects);
+            initWorkPage();
+        }
     } catch (error) {
         console.error('Error loading projects data:', error);
         // Fallback to default data
         const fallbackProjects = [
-            { id: 'project1', title: 'Portrait Series', thumbnail: 'images/work-1.jpg' },
-            { id: 'project2', title: 'Fashion Editorial', thumbnail: 'images/work-2.jpg' },
-            { id: 'project3', title: 'Beauty Portraits', thumbnail: 'images/work-3.jpg' },
-            { id: 'project4', title: 'Cultural Heritage', thumbnail: 'images/work-4.jpg' },
-            { id: 'project5', title: 'Portrait Collection', thumbnail: 'images/work-5.jpg' },
-            { id: 'project6', title: 'Fashion Series', thumbnail: 'images/work-6.jpg' }
+            { id: 'project1', title: 'Portrait Series', thumbnail: 'images/work-1.jpg', images: [{image: 'images/work-1.jpg'}] },
+            { id: 'project2', title: 'Fashion Editorial', thumbnail: 'images/work-2.jpg', images: [{image: 'images/work-2.jpg'}] },
+            { id: 'project3', title: 'Beauty Portraits', thumbnail: 'images/work-3.jpg', images: [{image: 'images/work-3.jpg'}] },
+            { id: 'project4', title: 'Cultural Heritage', thumbnail: 'images/work-4.jpg', images: [{image: 'images/work-4.jpg'}] },
+            { id: 'project5', title: 'Portrait Collection', thumbnail: 'images/work-5.jpg', images: [{image: 'images/work-5.jpg'}] },
+            { id: 'project6', title: 'Fashion Series', thumbnail: 'images/work-6.jpg', images: [{image: 'images/work-6.jpg'}] }
         ];
+        projectsList = fallbackProjects;
         projectData = {
             project1: { images: ['images/work-1.jpg'], title: 'Portrait Series', description: 'A collection of intimate portraits.' },
             project2: { images: ['images/work-2.jpg'], title: 'Fashion Editorial', description: 'Contemporary fashion photography.' },
@@ -79,8 +98,19 @@ async function loadProjectsData() {
             project5: { images: ['images/work-5.jpg'], title: 'Portrait Collection', description: 'A diverse collection of portraits.' },
             project6: { images: ['images/work-6.jpg'], title: 'Fashion Series', description: 'Exploring fashion and culture.' }
         };
-        renderWorkGallery(fallbackProjects);
-        initWorkPage();
+        fallbackProjects.forEach(project => {
+            project.images.forEach(img => {
+                allHomepagePhotos.push({
+                    src: img.image,
+                    title: project.title,
+                    project: project.id
+                });
+            });
+        });
+        if (document.querySelector('.work-page')) {
+            renderWorkGallery(fallbackProjects);
+            initWorkPage();
+        }
     }
 }
 
@@ -90,7 +120,7 @@ function renderWorkGallery(projects) {
     if (!workGallery) return;
     
     workGallery.innerHTML = projects.map(project => {
-        const thumbnail = project.thumbnail.replace('/images/', 'images/');
+        const thumbnail = project.thumbnail.startsWith('http') ? project.thumbnail : (project.thumbnail.startsWith('/') ? project.thumbnail : '/' + project.thumbnail);
         return `
             <div class="work-item" data-project="${project.id}">
                 <img src="${thumbnail}" alt="${project.title}">
@@ -104,22 +134,29 @@ function renderWorkGallery(projects) {
 }
 
 // Initialize data loading
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     if (document.querySelector('.homepage')) {
-        loadGalleryData();
+        // Load both gallery and projects data for homepage
+        await loadProjectsData();
+        await loadGalleryData();
+        // After both load, create homepage gallery that cycles through the 4 gallery items
+        createHomepageGallery();
     }
     if (document.querySelector('.work-page') || document.querySelector('.project-modal')) {
         loadProjectsData();
     }
 });
 
-// Homepage Gallery Navigation
-function initHomepageGallery() {
+// Create homepage gallery that cycles through the 4 gallery items
+function createHomepageGallery() {
+    // Use only the galleryData (the 4 items from homepage_gallery.json)
+    if (galleryData.length === 0) return;
+    
+    // Create indicators based on the 4 gallery items
     const galleryContainer = document.querySelector('.gallery-indicators');
     if (galleryContainer && galleryData.length > 0) {
-        // Generate indicators dynamically
-        galleryContainer.innerHTML = galleryData.map((_, index) => 
-            `<span class="indicator ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`
+        galleryContainer.innerHTML = galleryData.map((item, index) => 
+            `<span class="indicator ${index === 0 ? 'active' : ''}" data-index="${index}" data-project="${item.project}" title="${item.title}"></span>`
         ).join('');
     }
     
@@ -127,77 +164,123 @@ function initHomepageGallery() {
     const galleryArrows = document.querySelectorAll('.gallery-arrow');
     const indicators = document.querySelectorAll('.indicator');
     let currentImageIndex = 0;
+    let autoPlayInterval = null;
 
     if (galleryImages.length > 0 && galleryData.length > 0) {
-
-    function showImage(index) {
-        galleryImages.forEach((img, i) => {
-            img.classList.remove('active');
-            if (i === index) {
-                img.classList.add('active');
-                img.src = galleryData[index].src;
-                img.setAttribute('data-project', galleryData[index].project);
-                
-                // Update overlay
-                const overlay = img.parentElement.querySelector('.image-overlay');
-                if (overlay) {
-                    overlay.querySelector('.image-title').textContent = galleryData[index].title;
+        function showImage(index) {
+            if (index < 0 || index >= galleryData.length) return;
+            
+            galleryImages.forEach((img, i) => {
+                img.classList.remove('active');
+                if (i === 0) { // Use the first image element
+                    img.classList.add('active');
+                    img.src = galleryData[index].src;
+                    img.setAttribute('data-project', galleryData[index].project);
+                    
+                    // Update overlay
+                    const overlay = img.parentElement.querySelector('.image-overlay');
+                    if (overlay) {
+                        overlay.querySelector('.image-title').textContent = galleryData[index].title;
+                        const desc = overlay.querySelector('.image-description');
+                        if (desc) {
+                            desc.textContent = galleryData[index].description || 'Click to view project';
+                        }
+                    }
                 }
-            }
-        });
+            });
 
-        indicators.forEach((indicator, i) => {
-            indicator.classList.toggle('active', i === index);
-        });
+            // Update active indicator
+            indicators.forEach((indicator, i) => {
+                indicator.classList.toggle('active', i === index);
+            });
 
-        currentImageIndex = index;
-    }
-
-    // Arrow navigation
-    galleryArrows.forEach(arrow => {
-        arrow.addEventListener('click', () => {
-            if (arrow.classList.contains('gallery-arrow-left')) {
-                currentImageIndex = (currentImageIndex - 1 + galleryData.length) % galleryData.length;
-            } else {
-                currentImageIndex = (currentImageIndex + 1) % galleryData.length;
-            }
-            showImage(currentImageIndex);
-        });
-    });
-
-    // Indicator navigation
-    indicators.forEach((indicator, index) => {
-        indicator.addEventListener('click', () => {
-            showImage(index);
-        });
-    });
-
-    // Keyboard navigation
-    document.addEventListener('keydown', (e) => {
-        if (galleryImages.length > 0 && galleryImages[0].classList.contains('active')) {
-            if (e.key === 'ArrowLeft') {
-                currentImageIndex = (currentImageIndex - 1 + galleryData.length) % galleryData.length;
-                showImage(currentImageIndex);
-            } else if (e.key === 'ArrowRight') {
-                currentImageIndex = (currentImageIndex + 1) % galleryData.length;
-                showImage(currentImageIndex);
-            }
+            currentImageIndex = index;
         }
-    });
 
-    // Click on gallery image to go to project
-    galleryImages.forEach(img => {
-        img.addEventListener('click', () => {
-            const project = img.getAttribute('data-project');
-            if (project) {
-                window.location.href = `work.html#${project}`;
+        // Arrow navigation
+        galleryArrows.forEach(arrow => {
+            arrow.addEventListener('click', () => {
+                clearInterval(autoPlayInterval);
+                if (arrow.classList.contains('gallery-arrow-left')) {
+                    currentImageIndex = (currentImageIndex - 1 + galleryData.length) % galleryData.length;
+                } else {
+                    currentImageIndex = (currentImageIndex + 1) % galleryData.length;
+                }
+                showImage(currentImageIndex);
+                startAutoPlay();
+            });
+        });
+
+        // Indicator navigation - click to view project/album
+        indicators.forEach((indicator, index) => {
+            indicator.addEventListener('click', () => {
+                clearInterval(autoPlayInterval);
+                currentImageIndex = index;
+                showImage(currentImageIndex);
+                startAutoPlay();
+                
+                // Also navigate to work page to view full album
+                const projectId = indicator.getAttribute('data-project');
+                if (projectId) {
+                    window.location.href = `work.html#${projectId}`;
+                }
+            });
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (galleryImages.length > 0 && galleryImages[0].classList.contains('active')) {
+                clearInterval(autoPlayInterval);
+                if (e.key === 'ArrowLeft') {
+                    currentImageIndex = (currentImageIndex - 1 + galleryData.length) % galleryData.length;
+                    showImage(currentImageIndex);
+                } else if (e.key === 'ArrowRight') {
+                    currentImageIndex = (currentImageIndex + 1) % galleryData.length;
+                    showImage(currentImageIndex);
+                }
+                startAutoPlay();
             }
         });
-    });
 
-        // Initialize first image
+        // Click on gallery image to go to project
+        galleryImages.forEach(img => {
+            img.addEventListener('click', () => {
+                const project = img.getAttribute('data-project');
+                if (project) {
+                    window.location.href = `work.html#${project}`;
+                }
+            });
+        });
+
+        // Auto-play function - cycles through the 4 gallery items
+        function startAutoPlay() {
+            clearInterval(autoPlayInterval);
+            autoPlayInterval = setInterval(() => {
+                currentImageIndex = (currentImageIndex + 1) % galleryData.length;
+                showImage(currentImageIndex);
+            }, 4000); // Change every 4 seconds
+        }
+
+        // Pause on hover
+        const galleryMain = document.querySelector('.gallery-main');
+        if (galleryMain) {
+            galleryMain.addEventListener('mouseenter', () => {
+                clearInterval(autoPlayInterval);
+            });
+            galleryMain.addEventListener('mouseleave', () => {
+                startAutoPlay();
+            });
+        }
+
+        // Initialize first image and start auto-play
         showImage(0);
+        startAutoPlay();
     }
+}
+
+// Legacy function - kept for compatibility but replaced by createHomepageGallery
+function initHomepageGallery() {
+    // This is now handled by createHomepageGallery()
 }
 
 // Work Page - Project Modal
@@ -207,7 +290,6 @@ function initWorkPage() {
     const modalImage = document.getElementById('modalImage');
     const modalTitle = document.getElementById('modalTitle');
     const modalDescription = document.getElementById('modalDescription');
-    const modalClose = document.querySelector('.modal-close');
     const modalArrows = document.querySelectorAll('.modal-arrow');
 
     let currentProject = null;
@@ -262,16 +344,12 @@ function initWorkPage() {
         if (modalImage) modalImage.src = project.images[currentProjectImageIndex];
     }
 
-    if (modalClose) {
-        modalClose.addEventListener('click', closeProjectModal);
-    }
-
     if (modalArrows.length > 0) {
         modalArrows.forEach(arrow => {
             arrow.addEventListener('click', () => {
                 if (arrow.classList.contains('modal-arrow-right')) {
                     navigateProjectImage('next');
-                } else {
+                } else if (arrow.classList.contains('modal-arrow-left')) {
                     navigateProjectImage('prev');
                 }
             });

@@ -14,3 +14,10 @@
   to = "/admin/index.html"
   status = 200
 
+# Headers for JSON files
+[[headers]]
+  for = "/_data/*.json"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Content-Type = "application/json"
+

@@ -216,6 +216,8 @@ body {
     display: flex;
     gap: 1rem;
     margin-top: 2rem;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 .indicator {
@@ -226,6 +228,12 @@ body {
     opacity: 0.3;
     cursor: pointer;
     transition: var(--transition);
+    position: relative;
+}
+
+.indicator:hover {
+    opacity: 0.7;
+    transform: scale(1.1);
 }
 
 .indicator.active {
@@ -233,6 +241,28 @@ body {
     background: var(--primary-color);
     box-shadow: 0 0 0 2px var(--accent-color);
     transform: scale(1.2);
+}
+
+.indicator::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: var(--transition);
+    margin-bottom: 0.5rem;
+}
+
+.indicator:hover::after {
+    opacity: 1;
 }
 
 /* Work Page */
