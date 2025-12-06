@@ -1,29 +1,28 @@
 {
   "items": [
     {
-      "src": "/images/gallery-1.jpg",
-      "title": "Portrait Series",
+      "src": "/images/image1.jpg",
+      "title": "test",
       "description": "Click to view project",
       "project": "project1"
     },
     {
-      "src": "/images/gallery-2.jpg",
+      "src": "/images/image2.jpg",
       "title": "Fashion Editorial",
       "description": "Click to view project",
       "project": "project2"
     },
     {
-      "src": "/images/gallery-3.jpg",
+      "src": "/images/image3.jpg",
       "title": "Beauty Portraits",
       "description": "Click to view project",
       "project": "project3"
     },
     {
-      "src": "/images/gallery-4.jpg",
+      "src": "/images/image4.webp",
       "title": "Cultural Heritage",
       "description": "Click to view project",
       "project": "project4"
     }
   ]
 }
-
