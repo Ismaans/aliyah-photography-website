@@ -4,7 +4,7 @@
       "id": "project1",
       "title": "Portrait Series",
       "description": "A collection of intimate portraits capturing the essence of individual beauty and personality.",
-      "thumbnail": "/images/work-1.jpg",
+      "thumbnail": "/images/felv-cat.jpg",
       "images": [
         {
           "image": "/images/work-1.jpg"
@@ -104,4 +104,3 @@
     }
   ]
 }
-
