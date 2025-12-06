@@ -401,6 +401,8 @@ body {
     align-items: center;
     justify-content: center;
     padding: 2rem;
+    position: relative;
+    z-index: 1;
 }
 
 .modal-image {
@@ -411,6 +413,8 @@ body {
     object-fit: contain;
     transition: opacity 0.3s ease-in-out;
     opacity: 1;
+    display: block;
+    visibility: visible;
 }
 
 @keyframes fadeIn {

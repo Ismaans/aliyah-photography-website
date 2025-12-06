@@ -354,14 +354,39 @@ function initWorkPage() {
     }
 
     function openProjectModal(projectId) {
-        if (!projectData[projectId]) return;
+        if (!projectData[projectId]) {
+            console.error('Project not found:', projectId);
+            return;
+        }
         
         currentProject = projectId;
         currentProjectImageIndex = 0;
         const project = projectData[projectId];
         
-        if (modalImage && project.images.length > 0) {
-            modalImage.src = project.images[0];
+        if (!project.images || project.images.length === 0) {
+            console.error('No images in project:', projectId);
+            return;
+        }
+        
+        if (modalImage) {
+            const firstImage = project.images[0];
+            // Preload first image
+            const img = new Image();
+            img.onload = () => {
+                if (modalImage) {
+                    modalImage.src = firstImage;
+                    modalImage.style.display = 'block';
+                    modalImage.style.opacity = '1';
+                }
+            };
+            img.onerror = () => {
+                console.error('Failed to load first image:', firstImage);
+                if (modalImage) {
+                    modalImage.style.display = 'block';
+                    modalImage.style.opacity = '1';
+                }
+            };
+            img.src = firstImage;
         }
         
         if (projectModal) {
@@ -400,10 +425,12 @@ function initWorkPage() {
     }
 
     function navigateProjectImage(direction) {
-        if (!currentProject) return;
+        if (!currentProject || !projectData[currentProject]) return;
         
         const project = projectData[currentProject];
         const totalImages = project.images.length;
+        
+        if (totalImages === 0) return;
         
         if (direction === 'next') {
             currentProjectImageIndex = (currentProjectImageIndex + 1) % totalImages;
@@ -412,11 +439,26 @@ function initWorkPage() {
         }
         
         if (modalImage && project.images[currentProjectImageIndex]) {
+            const imagePath = project.images[currentProjectImageIndex];
             modalImage.style.opacity = '0';
-            setTimeout(() => {
-                modalImage.src = project.images[currentProjectImageIndex];
-                modalImage.style.opacity = '1';
-            }, 200);
+            
+            // Preload image to ensure it loads
+            const img = new Image();
+            img.onload = () => {
+                if (modalImage) {
+                    modalImage.src = imagePath;
+                    modalImage.style.opacity = '1';
+                    modalImage.style.display = 'block';
+                }
+            };
+            img.onerror = () => {
+                console.error('Failed to load image:', imagePath);
+                if (modalImage) {
+                    modalImage.style.opacity = '1';
+                    modalImage.style.display = 'block';
+                }
+            };
+            img.src = imagePath;
         }
     }
 
