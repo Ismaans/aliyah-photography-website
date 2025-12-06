@@ -40,3 +40,27 @@ collections:
                 min: 1
                 fields:
                   - {label: "Image", name: "image", widget: "image", required: true}
+
+  - name: "about"
+    label: "About Page"
+    files:
+      - label: "About"
+        name: "about"
+        file: "_data/about.json"
+        fields:
+          - {label: "About Photo", name: "image", widget: "image", required: true, hint: "Your photo for the About page"}
+          - label: "About Text"
+            name: "text"
+            widget: "list"
+            min: 1
+            fields:
+              - {label: "Paragraph", name: "paragraph", widget: "text", required: true}
+
+  - name: "about_photo"
+    label: "About Me Photo"
+    files:
+      - label: "About Me Photo"
+        name: "about_photo"
+        file: "_data/about_photo.json"
+        fields:
+          - {label: "Your Photo", name: "image", widget: "image", required: true, hint: "Upload your photo for the About page"}

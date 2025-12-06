@@ -133,6 +133,38 @@ function renderWorkGallery(projects) {
     }).join('');
 }
 
+// Load about page data
+async function loadAboutData() {
+    try {
+        // Load about photo separately
+        const photoResponse = await fetch('/_data/about_photo.json');
+        const photoData = await photoResponse.json();
+        
+        // Load about text
+        const textResponse = await fetch('/_data/about.json');
+        const textData = await textResponse.json();
+        
+        const aboutImage = document.getElementById('aboutImage');
+        const aboutText = document.getElementById('aboutText');
+        
+        // Set about photo (prioritize about_photo.json, fallback to about.json)
+        if (aboutImage) {
+            const imagePath = photoData?.image || textData?.image;
+            if (imagePath) {
+                aboutImage.src = imagePath.startsWith('http') ? imagePath : (imagePath.startsWith('/') ? imagePath : '/' + imagePath);
+            }
+        }
+        
+        // Set about text
+        if (aboutText && textData.text && Array.isArray(textData.text)) {
+            aboutText.innerHTML = textData.text.map(item => `<p>${item.paragraph || item}</p>`).join('');
+        }
+    } catch (error) {
+        console.error('Error loading about data:', error);
+        // Keep default content if loading fails
+    }
+}
+
 // Initialize data loading
 document.addEventListener('DOMContentLoaded', async () => {
     if (document.querySelector('.homepage')) {
@@ -144,6 +176,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (document.querySelector('.work-page') || document.querySelector('.project-modal')) {
         loadProjectsData();
+    }
+    if (document.querySelector('.about-page')) {
+        loadAboutData();
     }
 });
 
@@ -242,7 +277,7 @@ function createHomepageGallery() {
             }
         });
 
-        // Click on gallery image to go to project
+        // Click on gallery image to go to work page
         galleryImages.forEach(img => {
             img.addEventListener('click', () => {
                 const project = img.getAttribute('data-project');
@@ -251,6 +286,21 @@ function createHomepageGallery() {
                 }
             });
         });
+        
+        // Also make the overlay clickable
+        const overlay = document.querySelector('.image-overlay');
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                const activeImg = document.querySelector('.gallery-image.active');
+                if (activeImg) {
+                    const project = activeImg.getAttribute('data-project');
+                    if (project) {
+                        window.location.href = `work.html#${project}`;
+                    }
+                }
+            });
+            overlay.style.cursor = 'pointer';
+        }
 
         // Auto-play function - cycles through the 4 gallery items
         function startAutoPlay() {
@@ -288,8 +338,7 @@ function initWorkPage() {
     const workItems = document.querySelectorAll('.work-item');
     const projectModal = document.getElementById('projectModal');
     const modalImage = document.getElementById('modalImage');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalDescription = document.getElementById('modalDescription');
+    const modalClose = document.querySelector('.modal-close');
     const modalArrows = document.querySelectorAll('.modal-arrow');
 
     let currentProject = null;
@@ -311,22 +360,43 @@ function initWorkPage() {
         currentProjectImageIndex = 0;
         const project = projectData[projectId];
         
-        if (modalImage) modalImage.src = project.images[0];
-        if (modalTitle) modalTitle.textContent = project.title;
-        if (modalDescription) modalDescription.textContent = project.description;
+        if (modalImage && project.images.length > 0) {
+            modalImage.src = project.images[0];
+        }
         
         if (projectModal) {
             projectModal.classList.add('active');
             document.body.style.overflow = 'hidden';
+            startModalAutoPlay();
         }
+    }
+    
+    let modalAutoPlayInterval = null;
+    
+    function startModalAutoPlay() {
+        clearInterval(modalAutoPlayInterval);
+        if (!currentProject) return;
+        
+        modalAutoPlayInterval = setInterval(() => {
+            navigateProjectImage('next');
+        }, 3000); // Change photo every 3 seconds
+    }
+    
+    function stopModalAutoPlay() {
+        clearInterval(modalAutoPlayInterval);
     }
 
     function closeProjectModal() {
+        stopModalAutoPlay();
         if (projectModal) {
             projectModal.classList.remove('active');
             document.body.style.overflow = '';
         }
         currentProject = null;
+    }
+    
+    if (modalClose) {
+        modalClose.addEventListener('click', closeProjectModal);
     }
 
     function navigateProjectImage(direction) {
@@ -341,19 +411,34 @@ function initWorkPage() {
             currentProjectImageIndex = (currentProjectImageIndex - 1 + totalImages) % totalImages;
         }
         
-        if (modalImage) modalImage.src = project.images[currentProjectImageIndex];
+        if (modalImage && project.images[currentProjectImageIndex]) {
+            modalImage.style.opacity = '0';
+            setTimeout(() => {
+                modalImage.src = project.images[currentProjectImageIndex];
+                modalImage.style.opacity = '1';
+            }, 200);
+        }
     }
 
     if (modalArrows.length > 0) {
         modalArrows.forEach(arrow => {
-            arrow.addEventListener('click', () => {
+            arrow.addEventListener('click', (e) => {
+                e.stopPropagation();
+                stopModalAutoPlay();
                 if (arrow.classList.contains('modal-arrow-right')) {
                     navigateProjectImage('next');
                 } else if (arrow.classList.contains('modal-arrow-left')) {
                     navigateProjectImage('prev');
                 }
+                startModalAutoPlay();
             });
         });
+    }
+    
+    // Pause auto-play on hover
+    if (projectModal) {
+        projectModal.addEventListener('mouseenter', stopModalAutoPlay);
+        projectModal.addEventListener('mouseleave', startModalAutoPlay);
     }
 
     // Close modal on outside click
@@ -371,9 +456,13 @@ function initWorkPage() {
             if (e.key === 'Escape') {
                 closeProjectModal();
             } else if (e.key === 'ArrowLeft') {
+                stopModalAutoPlay();
                 navigateProjectImage('prev');
+                startModalAutoPlay();
             } else if (e.key === 'ArrowRight') {
+                stopModalAutoPlay();
                 navigateProjectImage('next');
+                startModalAutoPlay();
             }
         }
     });
