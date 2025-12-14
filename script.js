@@ -1,9 +1,22 @@
-// Mobile Menu Toggle
+/* ============================================
+   MOBILE-FIRST JAVASCRIPT ENHANCEMENTS
+   ============================================
+   Mobile improvements include:
+   - Enhanced menu toggle with outside-click and escape key support
+   - Touch/swipe gestures for modal gallery navigation
+   - Body scroll prevention when modal is open (iOS-friendly)
+   - Lazy loading for images below the fold
+   - Eager loading for modal images (immediate display)
+   ============================================ */
+
+// Mobile Menu Toggle - Enhanced for mobile usability
 const menuToggle = document.querySelector('.menu-toggle');
 const navMenu = document.querySelector('.nav-menu');
 
 if (menuToggle && navMenu) {
-    menuToggle.addEventListener('click', () => {
+    // Toggle menu on button click
+    menuToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
         navMenu.classList.toggle('active');
     });
 
@@ -13,6 +26,22 @@ if (menuToggle && navMenu) {
         link.addEventListener('click', () => {
             navMenu.classList.remove('active');
         });
+    });
+
+    // Close menu when clicking outside (mobile-friendly)
+    document.addEventListener('click', (e) => {
+        if (navMenu.classList.contains('active') && 
+            !navMenu.contains(e.target) && 
+            !menuToggle.contains(e.target)) {
+            navMenu.classList.remove('active');
+        }
+    });
+
+    // Close menu on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && navMenu.classList.contains('active')) {
+            navMenu.classList.remove('active');
+        }
     });
 }
 
@@ -55,10 +84,25 @@ async function loadProjectsData() {
         
         data.projects.forEach(project => {
             projectData[project.id] = {
-                images: project.images.map(img => {
-                    const imgPath = img.image.startsWith('http') ? img.image : (img.image.startsWith('/') ? img.image : '/' + img.image);
-                    return imgPath;
-                }),
+                images: project.images
+                    .map(img => {
+                        if (!img || !img.image) return null;
+                        let imgPath = img.image;
+                        // Ensure path starts with / if it's a local path
+                        if (!imgPath.startsWith('http') && !imgPath.startsWith('/')) {
+                            imgPath = '/' + imgPath;
+                        }
+                        // Remove leading /images/ if it's already there to avoid double slash
+                        if (imgPath.startsWith('/images/')) {
+                            return imgPath;
+                        }
+                        // Add /images/ if it's missing
+                        if (!imgPath.startsWith('http') && !imgPath.includes('/images/')) {
+                            imgPath = '/images/' + imgPath.replace(/^\/+/, '');
+                        }
+                        return imgPath;
+                    })
+                    .filter(img => img !== null), // Remove null entries
                 title: project.title,
                 description: project.description
             };
@@ -123,7 +167,7 @@ function renderWorkGallery(projects) {
         const thumbnail = project.thumbnail.startsWith('http') ? project.thumbnail : (project.thumbnail.startsWith('/') ? project.thumbnail : '/' + project.thumbnail);
         return `
             <div class="work-item" data-project="${project.id}">
-                <img src="${thumbnail}" alt="${project.title}">
+                <img src="${thumbnail}" alt="${project.title}" loading="lazy" decoding="async">
                 <div class="work-overlay">
                     <h3>${project.title}</h3>
                     <p>View Project</p>
@@ -338,11 +382,20 @@ function initWorkPage() {
     const workItems = document.querySelectorAll('.work-item');
     const projectModal = document.getElementById('projectModal');
     const modalImage = document.getElementById('modalImage');
+    const modalImageContainer = document.querySelector('.modal-image-container');
     const modalClose = document.querySelector('.modal-close');
     const modalArrows = document.querySelectorAll('.modal-arrow');
 
     let currentProject = null;
     let currentProjectImageIndex = 0;
+    
+    /* ============================================
+       MOBILE DETECTION - Responsive Behavior
+       ============================================
+       Mobile (< 640px): Vertical scrolling with all images stacked
+       Desktop (>= 640px): Single image with arrow navigation
+       ============================================ */
+    const isMobile = () => window.innerWidth < 640;
 
     if (workItems.length > 0) {
         workItems.forEach(item => {
@@ -368,31 +421,94 @@ function initWorkPage() {
             return;
         }
         
-        if (modalImage) {
-            const firstImage = project.images[0];
-            // Preload first image
-            const img = new Image();
-            img.onload = () => {
-                if (modalImage) {
-                    modalImage.src = firstImage;
-                    modalImage.style.display = 'block';
-                    modalImage.style.opacity = '1';
-                }
-            };
-            img.onerror = () => {
-                console.error('Failed to load first image:', firstImage);
-                if (modalImage) {
-                    modalImage.style.display = 'block';
-                    modalImage.style.opacity = '1';
-                }
-            };
-            img.src = firstImage;
+        // Filter out invalid/missing images
+        const validImages = project.images.filter(img => img && img.trim() !== '');
+        if (validImages.length === 0) {
+            console.warn('No valid images found for project:', projectId);
+            return;
+        }
+        
+        /* ============================================
+           MOBILE: Create Horizontal Scrolling Layout
+           ============================================
+           On mobile, create multiple image wrappers stacked horizontally
+           for smooth left-to-right scrolling/swiping experience
+           ============================================ */
+        if (isMobile() && modalImageContainer) {
+            // Clear existing content
+            modalImageContainer.innerHTML = '';
+            
+            // Create image wrappers for each image in the project
+            validImages.forEach((imagePath, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'modal-image-wrapper';
+                wrapper.setAttribute('data-index', index);
+                
+                const img = document.createElement('img');
+                img.src = imagePath;
+                img.className = 'modal-image';
+                img.alt = project.title || 'Project image';
+                img.loading = index === 0 ? 'eager' : 'lazy';
+                img.decoding = 'async';
+                
+                wrapper.appendChild(img);
+                modalImageContainer.appendChild(wrapper);
+            });
+            
+            // Scroll to first image (horizontal scroll)
+            const firstWrapper = modalImageContainer.querySelector('.modal-image-wrapper');
+            if (firstWrapper) {
+                firstWrapper.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'start' });
+            }
+        } else {
+            /* ============================================
+               DESKTOP: Single Image Display
+               ============================================
+               On desktop, use existing single image swap behavior
+               ============================================ */
+            // Reset error count
+            if (modalImage) {
+                modalImage.removeAttribute('data-error-count');
+            }
+            
+            if (modalImage) {
+                const firstImage = validImages[0];
+                // Preload first image
+                const img = new Image();
+                img.onload = () => {
+                    if (modalImage) {
+                        modalImage.src = firstImage;
+                        modalImage.style.display = 'block';
+                        modalImage.style.opacity = '1';
+                        modalImage.alt = project.title || 'Project image';
+                        modalImage.loading = 'eager';
+                    }
+                };
+                img.onerror = () => {
+                    console.error('Failed to load first image:', firstImage);
+                    if (validImages.length > 1) {
+                        currentProjectImageIndex = 1;
+                        setTimeout(() => navigateProjectImage('next'), 100);
+                    } else {
+                        closeProjectModal();
+                    }
+                };
+                img.src = firstImage;
+            }
         }
         
         if (projectModal) {
             projectModal.classList.add('active');
+            // Prevent body scroll when modal is open (mobile-friendly)
             document.body.style.overflow = 'hidden';
-            startModalAutoPlay();
+            // Also prevent scroll on iOS
+            document.body.style.position = 'fixed';
+            document.body.style.width = '100%';
+            
+            // Only start auto-play on desktop (mobile uses manual scrolling)
+            if (!isMobile()) {
+                startModalAutoPlay();
+            }
         }
     }
     
@@ -400,7 +516,7 @@ function initWorkPage() {
     
     function startModalAutoPlay() {
         clearInterval(modalAutoPlayInterval);
-        if (!currentProject) return;
+        if (!currentProject || isMobile()) return; // No auto-play on mobile
         
         modalAutoPlayInterval = setInterval(() => {
             navigateProjectImage('next');
@@ -415,8 +531,23 @@ function initWorkPage() {
         stopModalAutoPlay();
         if (projectModal) {
             projectModal.classList.remove('active');
+            // Restore body scroll (CSS also handles this, but JS ensures it)
             document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
         }
+        
+        /* ============================================
+           RESTORE ORIGINAL MODAL STRUCTURE
+           ============================================
+           On mobile, we clear innerHTML to create scrolling layout
+           On close, restore original structure for next open
+           ============================================ */
+        if (modalImageContainer && isMobile()) {
+            // Restore original structure with single modal-image element
+            modalImageContainer.innerHTML = '<img src="" alt="" class="modal-image" id="modalImage" loading="eager" decoding="async">';
+        }
+        
         currentProject = null;
     }
     
@@ -425,12 +556,23 @@ function initWorkPage() {
     }
 
     function navigateProjectImage(direction) {
+        /* ============================================
+           DESKTOP: Arrow Navigation
+           ============================================
+           Only works on desktop - mobile uses scrolling
+           ============================================ */
+        if (isMobile()) return; // Disable arrow navigation on mobile
+        
         if (!currentProject || !projectData[currentProject]) return;
         
         const project = projectData[currentProject];
-        const totalImages = project.images.length;
+        const validImages = project.images.filter(img => img && img.trim() !== '');
+        const totalImages = validImages.length;
         
-        if (totalImages === 0) return;
+        if (totalImages === 0) {
+            closeProjectModal();
+            return;
+        }
         
         if (direction === 'next') {
             currentProjectImageIndex = (currentProjectImageIndex + 1) % totalImages;
@@ -438,8 +580,8 @@ function initWorkPage() {
             currentProjectImageIndex = (currentProjectImageIndex - 1 + totalImages) % totalImages;
         }
         
-        if (modalImage && project.images[currentProjectImageIndex]) {
-            const imagePath = project.images[currentProjectImageIndex];
+        if (modalImage && validImages[currentProjectImageIndex]) {
+            const imagePath = validImages[currentProjectImageIndex];
             modalImage.style.opacity = '0';
             
             // Preload image to ensure it loads
@@ -449,22 +591,48 @@ function initWorkPage() {
                     modalImage.src = imagePath;
                     modalImage.style.opacity = '1';
                     modalImage.style.display = 'block';
+                    modalImage.alt = project.title || 'Project image';
+                    // Ensure modal images load immediately (not lazy)
+                    modalImage.loading = 'eager';
                 }
             };
             img.onerror = () => {
                 console.error('Failed to load image:', imagePath);
-                if (modalImage) {
-                    modalImage.style.opacity = '1';
-                    modalImage.style.display = 'block';
+                const attempts = modalImage.getAttribute('data-error-count') || 0;
+                if (parseInt(attempts) < totalImages && totalImages > 1) {
+                    modalImage.setAttribute('data-error-count', parseInt(attempts) + 1);
+                    setTimeout(() => {
+                        if (direction === 'next') {
+                            navigateProjectImage('next');
+                        } else {
+                            navigateProjectImage('prev');
+                        }
+                    }, 100);
+                } else {
+                    console.warn('No valid images could be loaded');
+                    closeProjectModal();
                 }
             };
             img.src = imagePath;
         }
     }
 
+    /* ============================================
+       ARROW NAVIGATION - Desktop Only
+       ============================================
+       Arrows are hidden on mobile via CSS, but we also disable
+       their functionality to ensure they don't interfere
+       ============================================ */
     if (modalArrows.length > 0) {
         modalArrows.forEach(arrow => {
             arrow.addEventListener('click', (e) => {
+                // Only work on desktop (mobile uses scrolling)
+                if (isMobile()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
+                
                 e.stopPropagation();
                 stopModalAutoPlay();
                 if (arrow.classList.contains('modal-arrow-right')) {
@@ -477,8 +645,8 @@ function initWorkPage() {
         });
     }
     
-    // Pause auto-play on hover
-    if (projectModal) {
+    // Pause auto-play on hover (desktop only)
+    if (projectModal && !isMobile()) {
         projectModal.addEventListener('mouseenter', stopModalAutoPlay);
         projectModal.addEventListener('mouseleave', startModalAutoPlay);
     }
@@ -492,22 +660,56 @@ function initWorkPage() {
         });
     }
 
-    // Keyboard navigation for modal
+    // Keyboard navigation for modal (desktop only)
     document.addEventListener('keydown', (e) => {
         if (projectModal && projectModal.classList.contains('active')) {
             if (e.key === 'Escape') {
                 closeProjectModal();
-            } else if (e.key === 'ArrowLeft') {
-                stopModalAutoPlay();
-                navigateProjectImage('prev');
-                startModalAutoPlay();
-            } else if (e.key === 'ArrowRight') {
-                stopModalAutoPlay();
-                navigateProjectImage('next');
-                startModalAutoPlay();
+            } else if (!isMobile()) {
+                // Arrow keys only work on desktop (mobile uses scrolling)
+                if (e.key === 'ArrowLeft') {
+                    stopModalAutoPlay();
+                    navigateProjectImage('prev');
+                    startModalAutoPlay();
+                } else if (e.key === 'ArrowRight') {
+                    stopModalAutoPlay();
+                    navigateProjectImage('next');
+                    startModalAutoPlay();
+                }
             }
         }
     });
+
+    /* ============================================
+       MOBILE: Enable Horizontal Swipe/Scroll
+       ============================================
+       On mobile, we use horizontal scrolling (left-to-right)
+       Vertical swipes are prevented to avoid interference with horizontal scrolling
+       ============================================ */
+    if (projectModal && isMobile()) {
+        // Allow horizontal scrolling, prevent vertical swipes that might interfere
+        let touchStartX = 0;
+        let touchStartY = 0;
+        
+        projectModal.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        projectModal.addEventListener('touchmove', (e) => {
+            // Allow horizontal scrolling, prevent vertical swipes
+            const touchX = e.changedTouches[0].screenX;
+            const touchY = e.changedTouches[0].screenY;
+            const deltaX = Math.abs(touchX - touchStartX);
+            const deltaY = Math.abs(touchY - touchStartY);
+            
+            // If horizontal movement is greater, allow it (scrolling)
+            // If vertical movement is greater, prevent it to avoid page scroll
+            if (deltaY > deltaX && deltaY > 10) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    }
 
     // Store functions globally for hash navigation
     window.openProjectModal = openProjectModal;
